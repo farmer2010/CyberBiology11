@@ -18,8 +18,10 @@ public class Bot{
 	public int minerals;
 	public int killed = 0;
 	public int[][] map;
-	public double[][][] weights = new double[10][7][7];
-	public double[][] neyrons = new double[10][7];
+	public double[][][] weights = new double[10][0][0];
+	public double[][] neyrons = new double[10][0];
+	public int[] layers_lenght = {7, 7, 7, 7, 7, 7, 7, 7, 7, 7};
+	public int layers_lenght_size = 10;
 	public int age = 1000;
 	public int state = 0;//бот или органика
 	public int state2 = 1;//что ставить в массив с миром
@@ -34,19 +36,8 @@ public class Bot{
 		{-1, 0},
 		{-1, -1}
 	};
-	private int[] minerals_list = {
-		1,
-		2,
-		3
-	};
-	private int[] photo_list = {
-		10,
-		8,
-		6,
-		5,
-		4,
-		3
-	};
+	private int[] minerals_list = {1, 2, 3};
+	private int[] photo_list = {10, 8, 6, 5, 4, 3};
 	private int[] world_scale = {162, 108};
 	private int c_red = 0;
 	private int c_green = 0;
@@ -64,10 +55,14 @@ public class Bot{
 		minerals = 0;
 		objects = new_objects;
 		map = new_map;
-		for (int i = 0; i < 10; i++) {
-			for (int j = 0; j < 7; j++) {
-				for (int k = 0; k < 7; k++) {
-					weights[i][j][k] = random();
+		for (int i = 0; i < layers_lenght_size; i++) {
+			neyrons[i] = get_layer(layers_lenght[i]);
+			if (i < layers_lenght_size - 1) {
+				weights[i] = get_weights(layers_lenght[i], layers_lenght[i + 1]);
+				for (int j = 0; j < layers_lenght[i]; j++) {
+					for (int k = 0; k < layers_lenght[i + 1]; k++) {
+						weights[i][j][k] = random();
+					}
 				}
 			}
 		}
@@ -161,8 +156,8 @@ public class Bot{
 		return(0);
 	}
 	public void update_commands(ListIterator<Bot> iterator) {//мозг
-		for (int weightx = 0; weightx < 10; weightx++) {
-			for (int weighty = 0; weighty < 7; weighty++) {
+		for (int weightx = 0; weightx < layers_lenght_size; weightx++) {
+			for (int weighty = 0; weighty < layers_lenght[weightx]; weighty++) {
 				if (weightx == 0) {//входы
 					if (weighty == 0) {
 						neyrons[0][0] = xpos / 162.0;
@@ -202,17 +197,17 @@ public class Bot{
 						neyrons[0][6] = result / 4.0;
 					}
 				}
-				if (weightx < 9) {//проход по весам
+				if (weightx < layers_lenght_size - 1) {//проход по весам
 					double data = RELU(neyrons[weightx][weighty]);//функция активации
 					neyrons[weightx][weighty] = 0;//сбросить значение
-					for (int weight = 0; weight < 7; weight++) {//умножение весов
+					for (int weight = 0; weight < layers_lenght[weightx + 1]; weight++) {//умножение весов
 						neyrons[weightx + 1][weight] += data * weights[weightx][weighty][weight];
 					}
 				}
 			}
 		}
-		if (neyrons[9][5] > 0) {
-			if (neyrons[9][6] > 0) {
+		if (neyrons[layers_lenght_size - 1][5] > 0) {
+			if (neyrons[layers_lenght_size - 1][6] > 0) {
 				rotate += 1;
 				if (rotate > 7) {
 					rotate = 0;
@@ -226,14 +221,12 @@ public class Bot{
 		}
 		double max = -99999.0;
 		for (int i = 0; i < 7; i++) {
-			if (neyrons[9][i] > max && i < 5) {
+			if (neyrons[layers_lenght_size - 1][i] > max && i < 5) {
 				command = i;
-				max = neyrons[9][i];
-				neyrons[9][i] = 0;
+				max = neyrons[layers_lenght_size - 1][i];
+				neyrons[layers_lenght_size - 1][i] = 0;
 			}
 		}
-		//System.out.println(neyrons[9][0]);
-		//System.out.println(weights[0][0][0]);
 		if (command == 0) {
 			move(rotate);
 			energy -= 1;
@@ -309,14 +302,16 @@ public class Bot{
 	}
 	public boolean is_relative(double[][][] brain1, double[][][] brain2) {
 		int errors = 0;
-		for (int i = 0; i < 10; i++) {
-			for (int j = 0; j < 7; j++) {
-				for (int k = 0; k < 7; k++) {
-					if (brain1[i][j][k] != brain2[i][j][k]) {
-						errors++;
-					}
-					if (errors > 8) {
-						return(false);
+		for (int i = 0; i < layers_lenght_size; i++) {
+			for (int j = 0; j < layers_lenght[i]; j++) {
+				if (i < layers_lenght_size - 1) {
+					for (int k = 0; k < layers_lenght[i + 1]; k++) {
+						if (brain1[i][j][k] != brain2[i][j][k]) {
+							errors++;
+						}
+						if (errors > 9) {
+							return(false);
+						}
 					}
 				}
 			}
@@ -360,19 +355,26 @@ public class Bot{
 				}else {
 					map[pos[0]][pos[1]] = 1; 
 					Color new_color = color;
-					double[][][] new_brain = new double[10][7][7];
-					for (int i = 0; i < 10; i++) {
-						for (int j = 0; j < 7; j++) {
-							for (int k = 0; k < 7; k++) {
-								new_brain[i][j][k] = weights[i][j][k];
+					double[][][] new_brain = new double[layers_lenght_size][0][0];
+					for (int i = 0; i < layers_lenght_size; i++) {
+						//neyrons[i] = get_layer(layers_lenght[i]);
+						if (i < layers_lenght_size - 1) {
+							new_brain[i] = get_weights(layers_lenght[i], layers_lenght[i + 1]);
+							for (int j = 0; j < layers_lenght[i]; j++) {
+								for (int k = 0; k < layers_lenght[i + 1]; k++) {
+									if (rand.nextInt(50) == 0) {//мутация
+										new_brain[i][j][k] = random();
+									}else {
+										new_brain[i][j][k] = weights[i][j][k];
+									}
+								}
 							}
 						}
 					}
-					if (rand.nextInt(4) == 0) {//мутация
+					if (rand.nextInt(400) == 0) {
 						new_color = new Color(rand.nextInt(256), rand.nextInt(256), rand.nextInt(256));
-						for (int i = 0; i < 8; i++) {
-							new_brain[rand.nextInt(10)][rand.nextInt(7)][rand.nextInt(7)] = random();
-						}
+					}else {
+						new_color = new Color(border(new_color.getRed() - 12 + rand.nextInt(25), 255), border(new_color.getGreen() - 12 + rand.nextInt(25), 255), border(new_color.getBlue() - 12 + rand.nextInt(25), 255));
 					}
 					Bot new_bot = new Bot(pos[0], pos[1], new_color, energy / 2, map, objects);
 					new_bot.minerals = minerals / 2;
@@ -391,11 +393,24 @@ public class Bot{
 		}
 		return(sec);
 	}
+	public double[] get_layer(int len) {
+		return(new double[len]);
+	}
+	public double[][] get_weights(int len, int len2) {
+		return(new double[len][len2]);
+	}
+	public int border(int number, int border) {
+		if (number > border) {
+			number = border;
+		}else if (number < 0) {
+			number = 0;
+		}
+		return(number);
+	}
 	public double RELU(double f) {
 		if (f > 0) {
 			return(f);
 		}else {
-			//System.out.println(1);
 			return(f * 0.01);
 		}
 	}
@@ -425,9 +440,6 @@ public class Bot{
 	}
 	public double th(double f) {
 		return((Math.pow(2.718, f) - Math.pow(2.718, -f)) / (Math.pow(2.718, f) + Math.pow(2.718, -f)));
-	}
-	public double to(double f) {
-		return(f);
 	}
 	public double sin(double f) {
 		return(Math.sin(f));

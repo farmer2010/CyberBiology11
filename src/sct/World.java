@@ -156,7 +156,7 @@ public class World extends JPanel{
 		canvas.setColor(black);
 		canvas.setFont(new Font("arial", Font.BOLD, 18));
 		canvas.drawString("Main: ", W - 300, 20);
-		canvas.drawString("version 1.0", W - 300, 40);
+		canvas.drawString("version 1.1", W - 300, 40);
 		canvas.drawString("steps: " + String.valueOf(steps), W - 300, 60);
 		canvas.drawString("objects: " + String.valueOf(obj_count) + ", bots: " + String.valueOf(b_count), W - 300, 80);
 		if (draw_type == 0) {
@@ -198,19 +198,16 @@ public class World extends JPanel{
 		}else {
 			canvas.drawString("none", W - 300, 295);
 		}
-		//if (sh_brain) {
-		//	canvas.setColor(new Color(90, 90, 90));
-		//	canvas.fillRect(0, 0, 360, 360);
-		//	canvas.setColor(new Color(128, 128, 128));
-		//	for (int x = 0; x < 8; x++) {
-		//		for (int y = 0; y < 8; y++) {
-		//			canvas.setColor(new Color(128, 128, 128));
-		//			canvas.fillRect(x * 45, y * 45, 40, 40);
-		//			canvas.setColor(new Color(0, 0, 0));
-		//			canvas.drawString(String.valueOf(selection.commands[x + y * 8]), x * 45 + 20, y * 45 + 20);
-		//		}
-		//	}
-		//}
+		if (sh_brain) {
+			canvas.setColor(new Color(90, 90, 90));
+			canvas.fillRect(0, 0, 45 * selection.layers_lenght_size, 45 * selection.layers_lenght[0]);
+			canvas.setColor(new Color(128, 128, 128));
+			for (int x = 0; x < selection.layers_lenght_size; x++) {
+				for (int y = 0; y < selection.layers_lenght[x]; y++) {
+					canvas.fillRect(x * 45, y * 45, 40, 40);
+				}
+			}
+		}
 		if (rec && steps % 25 == 0) {
 			try {
 				int last = draw_type;
