@@ -18,10 +18,12 @@ public class Bot{
 	public int minerals;
 	public int killed = 0;
 	public int[][] map;
-	public double[][][] weights = new double[10][0][0];
-	public double[][] neyrons = new double[10][0];
-	public int[] layers_lenght = {7, 7, 7, 7, 7, 7, 7, 7, 7, 7};
-	public int layers_lenght_size = 10;
+	public int[] layers_length = {7, 7, 7, 7, 7, 7};
+	public double[][][] weights = new double[layers_length.length][0][0];
+	public double[][] neyrons = new double[layers_length.length][0];
+	public int[][] neyrons_types = new int[layers_length.length][0];
+	private int[] neyrons_types_chance = {50, 49, 1};
+	public String[] neyrons_types_names = {"RELU", "sigmoid", "random"};
 	public int age = 1000;
 	public int state = 0;//бот или органика
 	public int state2 = 1;//что ставить в массив с миром
@@ -55,12 +57,14 @@ public class Bot{
 		minerals = 0;
 		objects = new_objects;
 		map = new_map;
-		for (int i = 0; i < layers_lenght_size; i++) {
-			neyrons[i] = get_layer(layers_lenght[i]);
-			if (i < layers_lenght_size - 1) {
-				weights[i] = get_weights(layers_lenght[i], layers_lenght[i + 1]);
-				for (int j = 0; j < layers_lenght[i]; j++) {
-					for (int k = 0; k < layers_lenght[i + 1]; k++) {
+		for (int i = 0; i < layers_length.length; i++) {
+			neyrons[i] = get_layer(layers_length[i]);
+			neyrons_types[i] = new int[layers_length[i]];
+			if (i < layers_length.length - 1) {
+				weights[i] = get_weights(layers_length[i], layers_length[i + 1]);
+				for (int j = 0; j < layers_length[i]; j++) {
+					neyrons_types[i][j] = get_neyron_type();
+					for (int k = 0; k < layers_length[i + 1]; k++) {
 						weights[i][j][k] = random();
 					}
 				}
@@ -156,8 +160,8 @@ public class Bot{
 		return(0);
 	}
 	public void update_commands(ListIterator<Bot> iterator) {//мозг
-		for (int weightx = 0; weightx < layers_lenght_size; weightx++) {
-			for (int weighty = 0; weighty < layers_lenght[weightx]; weighty++) {
+		for (int weightx = 0; weightx < layers_length.length; weightx++) {
+			for (int weighty = 0; weighty < layers_length[weightx]; weighty++) {
 				if (weightx == 0) {//входы
 					if (weighty == 0) {
 						neyrons[0][0] = xpos / 162.0;
@@ -197,17 +201,29 @@ public class Bot{
 						neyrons[0][6] = result / 4.0;
 					}
 				}
-				if (weightx < layers_lenght_size - 1) {//проход по весам
-					double data = RELU(neyrons[weightx][weighty]);//функция активации
+				if (weightx < layers_length.length - 1) {//проход по весам
+					double data = 0;
+					if (weightx > 0) {//функция активации
+						String func = neyrons_types_names[neyrons_types[weightx][weighty]];
+						if (func == "RELU") {
+							data = RELU(neyrons[weightx][weighty]);//простая
+						}else if (func == "sigmoid") {
+							data = sigmoid(neyrons[weightx][weighty]);//логистическая
+						}else if (func == "random") {
+							data = random_neyron(neyrons[weightx][weighty]);//случайная
+						}
+					}else {
+						data = neyrons[weightx][weighty];
+					}
 					neyrons[weightx][weighty] = 0;//сбросить значение
-					for (int weight = 0; weight < layers_lenght[weightx + 1]; weight++) {//умножение весов
+					for (int weight = 0; weight < layers_length[weightx + 1]; weight++) {//умножение весов
 						neyrons[weightx + 1][weight] += data * weights[weightx][weighty][weight];
 					}
 				}
 			}
 		}
-		if (neyrons[layers_lenght_size - 1][5] > 0) {
-			if (neyrons[layers_lenght_size - 1][6] > 0) {
+		if (neyrons[layers_length.length - 1][5] > 0) {
+			if (neyrons[layers_length.length - 1][6] > 0) {
 				rotate += 1;
 				if (rotate > 7) {
 					rotate = 0;
@@ -221,10 +237,10 @@ public class Bot{
 		}
 		double max = -99999.0;
 		for (int i = 0; i < 7; i++) {
-			if (neyrons[layers_lenght_size - 1][i] > max && i < 5) {
+			if (neyrons[layers_length.length - 1][i] > max && i < 5) {
 				command = i;
-				max = neyrons[layers_lenght_size - 1][i];
-				neyrons[layers_lenght_size - 1][i] = 0;
+				max = neyrons[layers_length.length - 1][i];
+				neyrons[layers_length.length - 1][i] = 0;
 			}
 		}
 		if (command == 0) {
@@ -302,10 +318,10 @@ public class Bot{
 	}
 	public boolean is_relative(double[][][] brain1, double[][][] brain2) {
 		int errors = 0;
-		for (int i = 0; i < layers_lenght_size; i++) {
-			for (int j = 0; j < layers_lenght[i]; j++) {
-				if (i < layers_lenght_size - 1) {
-					for (int k = 0; k < layers_lenght[i + 1]; k++) {
+		for (int i = 0; i < layers_length.length; i++) {
+			for (int j = 0; j < layers_length[i]; j++) {
+				if (i < layers_length.length - 1) {
+					for (int k = 0; k < layers_length[i + 1]; k++) {
 						if (brain1[i][j][k] != brain2[i][j][k]) {
 							errors++;
 						}
@@ -354,33 +370,51 @@ public class Bot{
 					map[xpos][ypos] = 0;
 				}else {
 					map[pos[0]][pos[1]] = 1; 
-					Color new_color = color;
-					double[][][] new_brain = new double[layers_lenght_size][0][0];
-					for (int i = 0; i < layers_lenght_size; i++) {
-						//neyrons[i] = get_layer(layers_lenght[i]);
-						if (i < layers_lenght_size - 1) {
-							new_brain[i] = get_weights(layers_lenght[i], layers_lenght[i + 1]);
-							for (int j = 0; j < layers_lenght[i]; j++) {
-								for (int k = 0; k < layers_lenght[i + 1]; k++) {
-									if (rand.nextInt(50) == 0) {//мутация
-										new_brain[i][j][k] = random();
-									}else {
-										new_brain[i][j][k] = weights[i][j][k];
-									}
+					Color new_color = new Color(color.getRed(), color.getGreen(), color.getBlue());
+					double[][][] new_brain = new double[layers_length.length][0][0];
+					int[][] new_neyrons_types = new int[layers_length.length][0];
+					for (int i = 0; i < layers_length.length; i++) {
+						new_neyrons_types[i] = new int[layers_length[i]];
+						if (i < layers_length.length - 1) {
+							new_brain[i] = get_weights(layers_length[i], layers_length[i + 1]);
+							for (int j = 0; j < layers_length[i]; j++) {
+								new_neyrons_types[i][j] = neyrons_types[i][j];
+								for (int k = 0; k < layers_length[i + 1]; k++) {
+									//if (rand.nextInt(50) == 0) {//мутация
+									//	new_brain[i][j][k] = random();
+									//}else {
+									//	new_brain[i][j][k] = weights[i][j][k];
+									//}
+									new_brain[i][j][k] = weights[i][j][k];
 								}
 							}
 						}
 					}
-					if (rand.nextInt(400) == 0) {
+					if (rand.nextInt(4) == 0) {//мутация
 						new_color = new Color(rand.nextInt(256), rand.nextInt(256), rand.nextInt(256));
-					}else {
-						new_color = new Color(border(new_color.getRed() - 12 + rand.nextInt(25), 255), border(new_color.getGreen() - 12 + rand.nextInt(25), 255), border(new_color.getBlue() - 12 + rand.nextInt(25), 255));
+						for (int i = 0; i < 8; i++) {
+							int dri = rand.nextInt(layers_length.length - 1);
+							int drj = rand.nextInt(layers_length[dri]);
+							int drk = rand.nextInt(layers_length[dri + 1]);
+							new_brain[dri][drj][drk] = random();
+						}
+						for (int i = 0; i < 4; i++) {
+							int dri = rand.nextInt(layers_length.length - 1);
+							int drj = rand.nextInt(layers_length[dri]);
+							new_neyrons_types[dri][drj] = get_neyron_type();
+						}
 					}
+					//if (rand.nextInt(400) == 0) {
+					//	new_color = new Color(rand.nextInt(256), rand.nextInt(256), rand.nextInt(256));
+					//}else {
+					//	new_color = new Color(border(new_color.getRed() - 12 + rand.nextInt(25), 255), border(new_color.getGreen() - 12 + rand.nextInt(25), 255), border(new_color.getBlue() - 12 + rand.nextInt(25), 255));
+					//}
 					Bot new_bot = new Bot(pos[0], pos[1], new_color, energy / 2, map, objects);
 					new_bot.minerals = minerals / 2;
 					energy /= 2;
 					minerals /= 2;
 					new_bot.weights = new_brain;
+					new_bot.neyrons_types = new_neyrons_types;
 					iterator.add(new_bot);
 				}
 			}
@@ -398,6 +432,17 @@ public class Bot{
 	}
 	public double[][] get_weights(int len, int len2) {
 		return(new double[len][len2]);
+	}
+	public int get_neyron_type() {
+		int chance = rand.nextInt(100);
+		int sum = 0;
+		for (int i = 0; i < neyrons_types_chance.length; i++) {
+			if (chance < sum + neyrons_types_chance[i]) {
+				return(i);
+			}
+			sum += neyrons_types_chance[i];
+		}
+		return(0);
 	}
 	public int border(int number, int border) {
 		if (number > border) {

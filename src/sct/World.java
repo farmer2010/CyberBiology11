@@ -156,7 +156,7 @@ public class World extends JPanel{
 		canvas.setColor(black);
 		canvas.setFont(new Font("arial", Font.BOLD, 18));
 		canvas.drawString("Main: ", W - 300, 20);
-		canvas.drawString("version 1.1", W - 300, 40);
+		canvas.drawString("version 1.2", W - 300, 40);
 		canvas.drawString("steps: " + String.valueOf(steps), W - 300, 60);
 		canvas.drawString("objects: " + String.valueOf(obj_count) + ", bots: " + String.valueOf(b_count), W - 300, 80);
 		if (draw_type == 0) {
@@ -200,10 +200,16 @@ public class World extends JPanel{
 		}
 		if (sh_brain) {
 			canvas.setColor(new Color(90, 90, 90));
-			canvas.fillRect(0, 0, 45 * selection.layers_lenght_size, 45 * selection.layers_lenght[0]);
-			canvas.setColor(new Color(128, 128, 128));
-			for (int x = 0; x < selection.layers_lenght_size; x++) {
-				for (int y = 0; y < selection.layers_lenght[x]; y++) {
+			canvas.fillRect(0, 0, 45 * selection.layers_length.length, 45 * max(selection.layers_length));
+			for (int x = 0; x < selection.layers_length.length; x++) {
+				for (int y = 0; y < selection.layers_length[x]; y++) {
+					if (selection.neyrons_types_names[selection.neyrons_types[x][y]] == "RELU") {
+						canvas.setColor(new Color(128, 128, 128));
+					}else if (selection.neyrons_types_names[selection.neyrons_types[x][y]] == "sigmoid") {
+						canvas.setColor(new Color(40, 40, 40));
+					}else if (selection.neyrons_types_names[selection.neyrons_types[x][y]] == "random") {
+						canvas.setColor(new Color(0, 82, 255));
+					}
 					canvas.fillRect(x * 45, y * 45, 40, 40);
 				}
 			}
@@ -246,6 +252,15 @@ public class World extends JPanel{
 				e.printStackTrace();
 			}
 		}
+	}
+	private int max(int[] list) {
+		int imax = -2147483648;
+		for (int i = 0; i < list.length; i++) {
+			if (list[i] > imax) {
+				imax = list[i];
+			}
+		}
+		return(imax);
 	}
 	public void newPopulation() {
 		steps = 0;
@@ -375,7 +390,6 @@ public class World extends JPanel{
 			repaint();
 			
 		}
-		
 	}
 	private class dr1 implements ActionListener{
 		public void actionPerformed(ActionEvent e) {
@@ -455,7 +469,11 @@ public class World extends JPanel{
 	private class shbr implements ActionListener{
 		public void actionPerformed(ActionEvent e) {
 			sh_brain = !sh_brain;
-			new start_stop().actionPerformed(e);
+			if (pause == false) {
+				pause = true;
+			}else if (sh_brain == false) {
+				pause = false;
+			}
 		}
 	}
 	private class kill_all implements ActionListener{
